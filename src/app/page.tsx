@@ -2,6 +2,7 @@
 import TypewriterEffect from '@/components/TypewriterEffect';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { getBotResponse } from '@/lib/botHandler'; // Assuming botHandler is in this location
 
 interface Message {
   type: 'user' | 'bot';
@@ -9,7 +10,7 @@ interface Message {
 }
 
 interface ChatHistory {
-  id: string;
+  id: string; 
   title: string;
   messages: Message[];
 }
@@ -23,33 +24,38 @@ export default function Home() {
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
 
-  const handleSendMessage = (message: string) => {
+  const handleSendMessage = async (message: string) => {
     if (!message.trim()) return;
 
     setIsChatting(true);
-    const newMessages = [
-      ...messages,
-      { type: 'user', content: message },
-      { type: 'bot', content: 'Can I Help You?' }
-    ];
-    setMessages(newMessages as Message[]);
+    const newUserMessage: Message = { type: 'user', content: message };
+    setMessages(prev => [...prev, newUserMessage]);
     setInputValue('');
 
-    // Update chat history
+    // Get bot response using botHandler
+    const botResponse = await getBotResponse(message);
+    const newBotMessage: Message = { type: 'bot', content: botResponse };
+    
+    // Sử dụng callback để đảm bảo có state mới nhất
+    setMessages(prev => [...prev, newBotMessage]);
+
+    // Update chat history với state mới nhất
     if (currentChatId) {
       setChatHistory(prev => prev.map(chat => 
-        chat.id === currentChatId ? { ...chat, messages: newMessages as Message[] } : chat
+        chat.id === currentChatId 
+          ? { ...chat, messages: [...chat.messages, newUserMessage, newBotMessage] }
+          : chat
       ));
     } else {
       const newChatId = Date.now().toString();
       setChatHistory(prev => [...prev, { 
         id: newChatId, 
         title: `Chat ${prev.length + 1}`, 
-        messages: newMessages as Message[]
+        messages: [newUserMessage, newBotMessage]
       }]);
       setCurrentChatId(newChatId);
     }
-  };
+};
 
   useEffect(() => {
     const checkLoginStatus = () => {
@@ -181,7 +187,7 @@ export default function Home() {
           </div>
         ) : (
           <div className="flex h-[calc(100vh-132px)]">
-            <div className="w-1/4 border-r border-gray-200 overflow-y-auto">
+            <div className="w-1/6 border-r border-gray-200 overflow-y-auto">
               <h2 className="text-lg font-semibold p-4 border-b">Chat History</h2>
               <ul>
                 <li className="p-3 hover:bg-gray-100 cursor-pointer" onClick={startNewChat}>
@@ -203,7 +209,7 @@ export default function Home() {
                 {messages.map((msg, index) => (
                   <div 
                     key={index} 
-                    className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'} mb-4`}
+                    className={`flex ${msg.type == 'user' ? 'justify-end' : 'justify-start'} mb-4`}
                   >
                     {msg.type === 'bot' && (
                       <img 
