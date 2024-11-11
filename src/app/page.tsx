@@ -112,7 +112,7 @@ export default function Home() {
       <header className="fixed top-0 left-0 right-0 z-10 bg-white flex justify-between items-center p-4 border-b">
         <div className="flex items-center space-x-2">
           <i className="fas fa-paperclip"></i>
-          <span className="font-bold">ChatGPT 4.0 mini</span>
+          <span className="font-bold text-black">ChatGPT 4.0 mini</span>
           <i className="fas fa-chevron-down"></i>
         </div>
         <div className="space-x-4">
@@ -137,7 +137,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="flex-1 mt-16 mb-16">
+      <main className="flex-1 mt-16 mb-16 bg-white text-black">
         {!isChatting ? (
           <div className="h-full m-5 flex flex-col justify-center items-center gap-10">
             <h1 className="text-5xl font-bold mb-4">Can I Help You?</h1>
