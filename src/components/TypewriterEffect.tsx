@@ -1,30 +1,33 @@
-import { useState, useEffect } from 'react';
+"use client"
+import { useState, useEffect } from 'react'
 
-export default function TypewriterEffect({ content }: { content: string }) {
-  const [displayedContent, setDisplayedContent] = useState('');
+interface TypewriterEffectProps {
+    content: string
+}
 
-  useEffect(() => {
-    // Đảm bảo content là string
-    const safeContent = content || '';
-    setDisplayedContent(''); // Reset content when prop changes
-    
-    let i = 0;
-    const timer = setInterval(() => {
-      if (i < safeContent.length) {
-        setDisplayedContent(prev => prev + safeContent[i]);
-        i++;
-      } else {
-        clearInterval(timer);
-      }
-    }, 10);
+export default function TypewriterEffect({ content }: TypewriterEffectProps) {
+    const [displayedContent, setDisplayedContent] = useState('')
+    const [currentIndex, setCurrentIndex] = useState(0)
 
-    return () => {
-      clearInterval(timer); // Cleanup timer
-    };
-  }, [content]);
+    useEffect(() => {
+        if (!content) return // Kiểm tra nếu content rỗng
 
-  // Nếu không có content, không render gì cả
-  if (!content) return null;
+        if (currentIndex < content.length) {
+            const timeout = setTimeout(() => {
+                setDisplayedContent(prev => prev + content[currentIndex])
+                setCurrentIndex(currentIndex + 1)
+            }, 30)
 
-  return <div>{displayedContent}</div>;
+            return () => clearTimeout(timeout)
+        }
+    }, [currentIndex, content])
+
+    // Reset effect khi content thay đổi
+    useEffect(() => {
+        setDisplayedContent('')
+        setCurrentIndex(0)
+    }, [content])
+
+    // Chỉ return displayedContent, không return thêm gì khác
+    return displayedContent
 }

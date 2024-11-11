@@ -50,7 +50,7 @@ export default function Home() {
       const newChatId = Date.now().toString();
       setChatHistory(prev => [...prev, { 
         id: newChatId, 
-        title: `Chat ${prev.length + 1}`, 
+        title: message, // Sử dụng tin nhắn đầu tiên làm tiêu đề
         messages: [newUserMessage, newBotMessage]
       }]);
       setCurrentChatId(newChatId);
@@ -108,7 +108,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-white text-black">
       <header className="fixed top-0 left-0 right-0 z-10 bg-white flex justify-between items-center p-4 border-b">
         <div className="flex items-center space-x-2">
           <i className="fas fa-paperclip"></i>

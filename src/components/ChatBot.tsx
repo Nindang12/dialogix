@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect, useRef } from 'react'
 import { getBotResponse } from '@/lib/botHandler'
+import TypewriterEffect from './TypewriterEffect'
 
 interface Message {
     _id?: string
@@ -35,6 +36,14 @@ export default function ChatBot() {
             loadMessages(currentConversationId)
         }
     }, [currentConversationId])
+
+    useEffect(() => {
+        scrollToBottom()
+    }, [messages])
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
 
     const loadConversations = async () => {
         try {
@@ -132,5 +141,83 @@ export default function ChatBot() {
         }
     }
 
-    // ... rest of the component (UI rendering) remains the same ...
+    return (
+        <div className="flex h-screen">
+            {/* Chat History Sidebar */}
+            <div className="w-64 bg-gray-100 p-4 overflow-y-auto">
+                <h2 className="text-lg font-bold mb-4">Lịch sử chat</h2>
+                {conversations.map((chat) => (
+                    <div
+                        key={chat._id}
+                        className="p-2 hover:bg-gray-200 cursor-pointer rounded"
+                        onClick={() => setCurrentConversationId(chat._id)}
+                    >
+                        {chat.title}
+                    </div>
+                ))}
+            </div>
+
+            {/* Chat Interface */}
+            <div className="flex-1 flex flex-col">
+                <div className="bg-blue-500 text-white p-4">
+                    <h1 className="text-xl font-bold">Bot Trợ Giúp</h1>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {messages.map((message, index) => (
+                        <div
+                            key={index}
+                            className={`flex ${message.isBot ? 'justify-start' : 'justify-end'}`}
+                        >
+                            <div
+                                className={`max-w-[70%] px-4 py-2 rounded-lg ${
+                                    message.isBot
+                                        ? 'bg-gray-200'
+                                        : 'bg-blue-500 text-white'
+                                }`}
+                            >
+                                {message.isBot ? (
+                                    <TypewriterEffect content={message.content || ''} />
+                                ) : (
+                                    message.content
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                    {isTyping && (
+                        <div className="flex justify-start">
+                            <div className="bg-gray-200 px-4 py-2 rounded-lg">
+                                Đang nhập...
+                            </div>
+                        </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                </div>
+                
+                <div className="border-t p-4">
+                    <div className="flex gap-2">
+                        <textarea
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyPress={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    sendMessage();
+                                }
+                            }}
+                            placeholder="Nhập tin nhắn..."
+                            className="flex-1 border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            rows={1}
+                        />
+                        <button
+                            onClick={sendMessage}
+                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                        >
+                            Gửi
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
 } 
