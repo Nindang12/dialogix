@@ -1,99 +1,99 @@
 "use client"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import Link from "next/link";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
+import Link from "next/link"
 
-export default function Login(){
-    const [username, setUsername] = useState<string>('')
-    const [password, setPassword] = useState<string>('')
+export default function Login() {
+    const [username, setUsername] = useState('')
+    const [password, setPassword] = useState('')
+    const [isLoading, setIsLoading] = useState(false)
     const router = useRouter()
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-    useEffect(() => {
-        const checkLoginStatus = () => {
-            const token = document.cookie.split('; ').find(row => row.startsWith('token='));
-            if (token) {
-                setIsLoggedIn(true);
-                router.push('/');
-            }
-        };
-        checkLoginStatus();
-    }, [router]);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        // Validate inputs
+        if (!username.trim() || !password.trim()) {
+            toast.error('Please enter both username and password');
+            return;
+        }
 
-    const onLogin = async () => {
+        setIsLoading(true);
+
         try {
-            if (!username || !password) {
-                toast.error("Vui lòng nhập đầy đủ thông tin");
-                return;
-            }
-
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ username}),
+                body: JSON.stringify({ username, password }),
             });
 
             const data = await response.json();
+            console.log('Login response:', data);
 
-            if (!response.ok) {
-                toast.error(data.error || "Đã xảy ra lỗi trong quá trình đăng nhập");
-                return;
+            if (response.ok && data.token) {
+                // Store user data in localStorage
+                localStorage.setItem('user', JSON.stringify({ 
+                    username: data.username 
+                }));
+
+                toast.success('Login successful!');
+                
+                // Small delay to ensure cookie is set
+                setTimeout(() => {
+                    router.push('/');
+                    router.refresh();
+                }, 500);
+            } else {
+                toast.error(data.error || 'Login failed. Please check your credentials.');
             }
-
-            // Save token to cookie
-            document.cookie = `token=${data.token}; path=/; max-age=86400`; // 24 hours
-            localStorage.setItem('user', JSON.stringify(data.user));
-            setIsLoggedIn(true);
-            router.push('/');
-            
         } catch (err) {
-            console.error(err);
-            toast.error("Đã xảy ra lỗi trong quá trình đăng nhập");
+            console.error('Login error:', err);
+            toast.error('An error occurred. Please try again later.');
+        } finally {
+            setIsLoading(false);
         }
-    }
+    };
 
-    const handleKeyPress = (event: React.KeyboardEvent) => {
-        if (event.key === 'Enter') {
-            onLogin()
-        }
-    }
-
-    return(
-        <div className="flex flex-col justify-center items-center h-screen gap-2">
-            <ToastContainer/>
-            <span className="mb-1 font-bold">
-                Đăng nhập
-            </span>
-            <div className="w-full px-3 flex justify-center">
-                <input 
-                    onChange={(event)=>setUsername(event.target.value)} 
-                    className="md:w-[370px] w-full px-6 py-4 focus outline-none border border-gray-300 border-solid  rounded-2xl bg-gray-100 text-sm" 
-                    type="text" 
-                    placeholder="Tên người dùng, số điện thoại hoặc email" 
+    return (
+        <div className="flex flex-col justify-center items-center h-screen gap-2 bg-white text-black">
+            <ToastContainer position="top-center" />
+            <h1 className="text-2xl font-bold mb-4">Đăng nhập</h1>
+            <form onSubmit={handleSubmit} className="w-full max-w-md px-4">
+                <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Tên đăng nhập hoặc email"
+                    className="w-full p-3 mb-4 border rounded-lg focus:outline-none focus:ring-2"
+                    disabled={isLoading}
+                    required
                 />
-            </div>
-            <div className="w-full px-3 flex justify-center">
-                <input 
-                    onChange={(event)=>setPassword(event.target.value)} 
-                    onKeyUp={handleKeyPress}
-                    className="md:w-[370px] w-full px-6 py-4 focus outline-none border border-gray-300 border-solid  rounded-2xl bg-gray-100 text-sm" 
-                    type="password" 
-                    placeholder="Mật khẩu" 
+                <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Mật khẩu"
+                    className="w-full p-3 mb-4 border rounded-lg focus:outline-none focus:ring-2"
+                    disabled={isLoading}
+                    required
                 />
-            </div>
-            <div className="w-full px-3 flex justify-center">
-                <button onClick={onLogin} className="md:w-[370px] w-full px-6 py-4 rounded-2xl bg-black text-white font-bold text-sm">Đăng nhập</button>
-            </div>
-            <button className="text-gray-400 text-sm mt-2">Bạn quên mật khẩu ư?</button>
-            <Link href={'/register'} className="w-full px-3 flex justify-center">
-                <button className="md:w-[370px] w-full px-6 py-4  rounded-2xl border border-solid border-black font-bold text-sm">Tạo tài khoản</button>
-            </Link>
-            <span className="text-gray-400 text-sm mt-2">Hoặc có thể đăng nhập bằng</span>
-            {/* <LoginGoogle/> */}
+                <button
+                    type="submit"
+                    className="w-full p-3 bg-black text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    disabled={isLoading}
+                >
+                    {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+                </button>
+                <div className="mt-4 text-center">
+                    <Link href="/register" className="text-blue-500 hover:underline">
+                        Chưa có tài khoản? Đăng ký ngay
+                    </Link>
+                </div>
+            </form>
         </div>
     )
 }

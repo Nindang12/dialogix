@@ -1,56 +1,66 @@
 import { NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { connectToDatabase } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
 export async function POST(request: Request) {
     try {
         const { username, password } = await request.json()
+        console.log('Login attempt for username:', username)
+
+        const client = await connectToDatabase()
+        const db = client.db('dialogix')
         
-        const client = await clientPromise
-        const db = client.db(process.env.MONGODB_DB)
-        
-        // Find user by username or email
-        const user = await db.collection('users').findOne({
-            $or: [
-                { username: username },
-                { email: username }
-            ]
-        })
+        // Find user
+        const user = await db.collection('users').findOne({ username })
+        console.log('User found:', user ? 'yes' : 'no')
 
         if (!user) {
-            return NextResponse.json(
-                { error: 'Người dùng không tồn tại' },
-                { status: 401 }
-            )
+            return NextResponse.json({ error: 'User not found' }, { status: 401 })
         }
 
         // Verify password
         const isValid = await bcrypt.compare(password, user.password)
+        console.log('Password valid:', isValid)
+
         if (!isValid) {
-            return NextResponse.json(
-                { error: 'Mật khẩu không đúng' },
-                { status: 401 }
-            )
+            return NextResponse.json({ error: 'Invalid password' }, { status: 401 })
         }
 
-        // Create JWT token
+        // Generate token
         const token = jwt.sign(
-            { userId: user._id, username: user.username },
-            process.env.JWT_SECRET!,
+            { username: user.username, id: user._id },
+            JWT_SECRET,
             { expiresIn: '24h' }
         )
 
-        return NextResponse.json({ token, user: {
-            username: user.username,
-            email: user.email,
-            _id: user._id
-        }})
+        console.log('Token generated successfully')
 
+        // Create response with token
+        const response = NextResponse.json({
+            success: true,
+            username: user.username,
+            token
+        })
+
+        // Set cookie with token
+        response.cookies.set({
+            name: 'token',
+            value: token,
+            httpOnly: false, // Changed to false to allow JS access
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax', // Changed to lax for better compatibility
+            path: '/',
+            maxAge: 86400 // 24 hours
+        })
+
+        return response
     } catch (error) {
         console.error('Login error:', error)
         return NextResponse.json(
-            { error: 'Đã xảy ra lỗi trong quá trình đăng nhập' },
+            { error: 'Internal server error' },
             { status: 500 }
         )
     }

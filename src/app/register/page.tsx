@@ -12,30 +12,10 @@ export default function Register() {
     const [confirmPassword, setConfirmPassword] = useState('')
     const router = useRouter()
 
-    const validateEmail = (email: string) => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        return emailRegex.test(email)
-    }
-
-    const validatePassword = (password: string) => {
-        return password.length >= 6
-    }
-
     const onRegister = async () => {
         try {
-            // Validate inputs
             if (!username || !email || !password || !confirmPassword) {
                 toast.error("Vui lòng nhập đầy đủ thông tin")
-                return
-            }
-
-            if (!validateEmail(email)) {
-                toast.error("Email không hợp lệ")
-                return
-            }
-
-            if (!validatePassword(password)) {
-                toast.error("Mật khẩu phải có ít nhất 6 ký tự")
                 return
             }
 
@@ -55,77 +35,65 @@ export default function Register() {
             const data = await response.json()
 
             if (!response.ok) {
-                toast.error(data.error || "Đã xảy ra lỗi trong quá trình đăng ký")
+                toast.error(data.error || "Lỗi đăng ký")
                 return
             }
 
             toast.success("Đăng ký thành công")
             router.push('/login')
-            
-        } catch (err) {
-            console.error(err)
-            toast.error("Đã xảy ra lỗi trong quá trình đăng ký")
-        }
-    }
 
-    const handleKeyPress = (event: React.KeyboardEvent) => {
-        if (event.key === 'Enter') {
-            onRegister()
+        } catch (error) {
+            console.error('Registration error:', error)
+            toast.error("Lỗi đăng ký")
         }
     }
 
     return (
-        <div className="flex flex-col justify-center items-center h-screen gap-2">
-            <ToastContainer/>
-            <span className="mb-1 font-bold">
-                Đăng ký
-            </span>
-            <div className="w-full px-3 flex justify-center">
-                <input 
-                    onChange={(event) => setUsername(event.target.value)}
-                    className="md:w-[370px] w-full px-6 py-4 focus outline-none border border-gray-300 border-solid rounded-2xl bg-gray-100 text-sm"
+        <div className="flex flex-col justify-center items-center h-screen gap-2 bg-white text-black">
+            <ToastContainer />
+            <h1 className="text-2xl font-bold mb-4">Đăng ký</h1>
+            <div className="w-full max-w-md px-4">
+                <input
                     type="text"
-                    placeholder="Tên người dùng"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Tên đăng nhập"
+                    className="w-full p-3 mb-4 border rounded-lg focus:outline-none focus:ring-2"
                 />
-            </div>
-            <div className="w-full px-3 flex justify-center">
-                <input 
-                    onChange={(event) => setEmail(event.target.value)}
-                    className="md:w-[370px] w-full px-6 py-4 focus outline-none border border-gray-300 border-solid rounded-2xl bg-gray-100 text-sm"
+                <input
                     type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="Email"
+                    className="w-full p-3 mb-4 border rounded-lg focus:outline-none focus:ring-2"
                 />
-            </div>
-            <div className="w-full px-3 flex justify-center">
-                <input 
-                    onChange={(event) => setPassword(event.target.value)}
-                    className="md:w-[370px] w-full px-6 py-4 focus outline-none border border-gray-300 border-solid rounded-2xl bg-gray-100 text-sm"
+                <input
                     type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     placeholder="Mật khẩu"
+                    className="w-full p-3 mb-4 border rounded-lg focus:outline-none focus:ring-2"
                 />
-            </div>
-            <div className="w-full px-3 flex justify-center">
-                <input 
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    onKeyUp={handleKeyPress}
-                    className="md:w-[370px] w-full px-6 py-4 focus outline-none border border-gray-300 border-solid rounded-2xl bg-gray-100 text-sm"
+                <input
                     type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Xác nhận mật khẩu"
+                    className="w-full p-3 mb-4 border rounded-lg focus:outline-none focus:ring-2"
+                    onKeyPress={(e) => e.key === 'Enter' && onRegister()}
                 />
-            </div>
-            <div className="w-full px-3 flex justify-center">
-                <button 
+                <button
                     onClick={onRegister}
-                    className="md:w-[370px] w-full px-6 py-4 rounded-2xl bg-black text-white font-bold text-sm"
+                    className="w-full p-3 bg-black text-white rounded-lg hover:bg-gray-800"
                 >
                     Đăng ký
                 </button>
+                <div className="mt-4 text-center">
+                    <Link href="/login" className="text-blue-500 hover:underline">
+                        Đã có tài khoản? Đăng nhập
+                    </Link>
+                </div>
             </div>
-            <Link href="/login" className="w-full px-3 flex justify-center">
-                <button className="md:w-[370px] w-full px-6 py-4 rounded-2xl border border-solid border-black font-bold text-sm">
-                    Đã có tài khoản? Đăng nhập
-                </button>
-            </Link>
         </div>
     )
 }
