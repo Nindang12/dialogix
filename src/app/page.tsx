@@ -28,36 +28,52 @@ export default function Home() {
   const searchParams = useSearchParams();
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSendMessage = async (message: string) => {
-    if (!message.trim()) return;
+    if (!message || !message.trim()) {
+      return;
+    }
 
     setIsChatting(true);
     const newUserMessage: Message = { type: 'user', content: message };
     setMessages(prev => [...prev, newUserMessage]);
     setInputValue('');
+    setIsLoading(true);
 
-    const botResponse = await getBotResponse(message);
-    const newBotMessage: Message = { type: 'bot', content: botResponse };
-    
-    setMessages(prev => [...prev, newBotMessage]);
+    try {
+      const botResponse = await getBotResponse(message);
+      const newBotMessage: Message = { type: 'bot', content: botResponse };
+      
+      setMessages(prev => [...prev, newBotMessage]);
 
-    if (isLoggedIn) {
-      if (currentChatId) {
-        setChatHistory(prev => prev.map(chat => 
-          chat.id === currentChatId 
-            ? { ...chat, messages: [...chat.messages, newUserMessage, newBotMessage] }
-            : chat
-        ));
-      } else {
-        const newChatId = Date.now().toString();
-        setChatHistory(prev => [...prev, { 
-          id: newChatId,
-          title: message,
-          messages: [newUserMessage, newBotMessage]
-        }]);
-        setCurrentChatId(newChatId);
+      if (isLoggedIn) {
+        if (currentChatId) {
+          setChatHistory(prev => prev.map(chat => 
+            chat.id === currentChatId 
+              ? { ...chat, messages: [...chat.messages, newUserMessage, newBotMessage] }
+              : chat
+          ));
+        } else {
+          const newChatId = Date.now().toString();
+          setChatHistory(prev => [...prev, { 
+            id: newChatId,
+            title: message.length > 30 ? message.substring(0, 30) + '...' : message,
+            messages: [newUserMessage, newBotMessage]
+          }]);
+          setCurrentChatId(newChatId);
+        }
       }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages(prev => [...prev, { 
+        type: 'bot', 
+        content: error instanceof Error 
+          ? `Lỗi: ${error.message}` 
+          : 'Xin lỗi, đã có lỗi xảy ra khi xử lý tin nhắn của bạn.'
+      }]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -335,7 +351,7 @@ export default function Home() {
 
       <main className="flex-1 mt-16 mb-16 bg-white text-black">
         <div className="flex h-[calc(100vh-132px)]">
-          {isLoggedIn && chatHistory.length > 0 && (
+          {isLoggedIn && chatHistory.length > 0 &&  (
             <div className="w-1/6 border-r border-gray-200 overflow-y-auto">
               <div className="p-4 border-b">
                 <button
@@ -491,6 +507,22 @@ export default function Home() {
                         </div>
                       </div>
                     ))}
+                    {isLoading && (
+                      <div className="flex justify-start mb-4">
+                        <img 
+                          src="/assets/avtBotchat.png" 
+                          alt="ChatGPT Avatar"
+                          className="w-8 h-8 rounded-full mr-2"
+                        />
+                        <div className="bg-gray-100 rounded-lg p-3">
+                          <div className="flex space-x-2">
+                            <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" />
+                            <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce delay-100" />
+                            <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce delay-200" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <div ref={messagesEndRef} />
                   </div>
                   <div className="border-t bg-white p-4">
