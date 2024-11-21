@@ -335,7 +335,7 @@ export default function Home() {
 
       <main className="flex-1 mt-16 mb-16 bg-white text-black">
         <div className="flex h-[calc(100vh-132px)]">
-          {isLoggedIn && (
+          {isLoggedIn && chatHistory.length > 0 && (
             <div className="w-1/6 border-r border-gray-200 overflow-y-auto">
               <div className="p-4 border-b">
                 <button

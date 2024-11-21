@@ -10,17 +10,62 @@ export default function Register() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
+    const [errors, setErrors] = useState({
+        username: '',
+        email: '',
+        password: '',
+        confirmPassword: ''
+    })
     const router = useRouter()
+
+    const validateForm = () => {
+        let isValid = true
+        const newErrors = {
+            username: '',
+            email: '',
+            password: '',
+            confirmPassword: ''
+        }
+
+        if (!username) {
+            newErrors.username = 'Vui lòng nhập tên đăng nhập'
+            isValid = false
+        }
+
+        if (!email) {
+            newErrors.email = 'Vui lòng nhập email'
+            isValid = false
+        } else {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+            if (!emailRegex.test(email)) {
+                newErrors.email = 'Email không hợp lệ'
+                isValid = false
+            }
+        }
+
+        if (!password) {
+            newErrors.password = 'Vui lòng nhập mật khẩu'
+            isValid = false
+        } else if (password.length < 6) {
+            newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự'
+            isValid = false
+        }
+
+        if (!confirmPassword) {
+            newErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu'
+            isValid = false
+        } else if (password !== confirmPassword) {
+            newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp'
+            isValid = false
+        }
+
+        setErrors(newErrors)
+        return isValid
+    }
 
     const onRegister = async () => {
         try {
-            if (!username || !email || !password || !confirmPassword) {
-                toast.error("Vui lòng nhập đầy đủ thông tin")
-                return
-            }
-
-            if (password !== confirmPassword) {
-                toast.error("Mật khẩu xác nhận không khớp")
+            if (!validateForm()) {
                 return
             }
 
@@ -35,7 +80,13 @@ export default function Register() {
             const data = await response.json()
 
             if (!response.ok) {
-                toast.error(data.error || "Lỗi đăng ký")
+                if (data.error === 'Tên người dùng đã tồn tại') {
+                    setErrors(prev => ({...prev, username: data.error}))
+                } else if (data.error === 'Email đã được sử dụng') {
+                    setErrors(prev => ({...prev, email: data.error}))
+                } else {
+                    toast.error(data.error || "Lỗi đăng ký")
+                }
                 return
             }
 
@@ -53,35 +104,59 @@ export default function Register() {
             <ToastContainer />
             <h1 className="text-2xl font-bold mb-4">Đăng ký</h1>
             <div className="w-full max-w-md px-4">
-                <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Tên đăng nhập"
-                    className="w-full p-3 mb-4 border rounded-lg focus:outline-none focus:ring-2"
-                />
-                <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Email"
-                    className="w-full p-3 mb-4 border rounded-lg focus:outline-none focus:ring-2"
-                />
-                <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Mật khẩu"
-                    className="w-full p-3 mb-4 border rounded-lg focus:outline-none focus:ring-2"
-                />
-                <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Xác nhận mật khẩu"
-                    className="w-full p-3 mb-4 border rounded-lg focus:outline-none focus:ring-2"
-                    onKeyPress={(e) => e.key === 'Enter' && onRegister()}
-                />
+                <div className="mb-4">
+                    <input
+                        type="text"
+                        value={username}
+                        onChange={(e) => {
+                            setUsername(e.target.value)
+                            setErrors(prev => ({...prev, username: ''}))
+                        }}
+                        placeholder="Tên đăng nhập"
+                        className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${errors.username ? 'border-red-500' : ''}`}
+                    />
+                    {errors.username && <p className="text-red-500 text-sm mt-1">{errors.username}</p>}
+                </div>
+                <div className="mb-4">
+                    <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                            setEmail(e.target.value)
+                            setErrors(prev => ({...prev, email: ''}))
+                        }}
+                        placeholder="Email"
+                        className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${errors.email ? 'border-red-500' : ''}`}
+                    />
+                    {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                </div>
+                <div className="mb-4">
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => {
+                            setPassword(e.target.value)
+                            setErrors(prev => ({...prev, password: ''}))
+                        }}
+                        placeholder="Mật khẩu"
+                        className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${errors.password ? 'border-red-500' : ''}`}
+                    />
+                    {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+                </div>
+                <div className="mb-4">
+                    <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => {
+                            setConfirmPassword(e.target.value)
+                            setErrors(prev => ({...prev, confirmPassword: ''}))
+                        }}
+                        placeholder="Xác nhận mật khẩu"
+                        className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${errors.confirmPassword ? 'border-red-500' : ''}`}
+                        onKeyPress={(e) => e.key === 'Enter' && onRegister()}
+                    />
+                    {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
+                </div>
                 <button
                     onClick={onRegister}
                     className="w-full p-3 bg-black text-white rounded-lg hover:bg-gray-800"

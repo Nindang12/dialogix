@@ -17,6 +17,23 @@ export async function POST(request: Request) {
             )
         }
 
+        // Validate password length
+        if (password.length < 6) {
+            return NextResponse.json(
+                { error: 'Mật khẩu phải có ít nhất 6 ký tự' },
+                { status: 400 }
+            )
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(email)) {
+            return NextResponse.json(
+                { error: 'Email không hợp lệ' },
+                { status: 400 }
+            )
+        }
+
         // Check if username exists
         const existingUsername = await db.collection('users').findOne({ username })
         if (existingUsername) {
@@ -61,4 +78,4 @@ export async function POST(request: Request) {
             { status: 500 }
         )
     }
-} 
+}
