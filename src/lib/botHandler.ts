@@ -1,54 +1,78 @@
+import OpenAI from 'openai';
+
 interface BotResponse {
     message: string;
     summary?: string;
     error?: string;
 }
 
+// Khởi tạo OpenAI client
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
+
 export async function getBotResponse(message: string): Promise<string> {
     try {
-        // Validate input
         if (!message || message.trim().length === 0) {
             return 'Vui lòng nhập nội dung tin nhắn';
         }
 
-        const trimmedMessage = message.trim();
+        const trimmedMessage = message.trim().toLowerCase();
 
-        // Thêm timeout cho request
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+        // Xử lý yêu cầu tóm tắt văn bản
+        if (trimmedMessage.includes('tóm tắt')) {
+            const textToSummarize = message.replace(/tóm tắt/i, '').trim();
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        const response = await fetch('http://192.168.10.234:5000/summarize', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ 
-                sentence: trimmedMessage // Thay đổi từ 'text' thành 'sentence' theo API spec
-            }),
-            signal: controller.signal
-        });
+            const response = await fetch('http://192.168.10.234:5000/summarize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    sentence: textToSummarize
+                }),
+                signal: controller.signal
+            });
 
-        clearTimeout(timeoutId);
+            clearTimeout(timeoutId);
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'API request failed');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'API request failed');
+            }
+
+            const data: BotResponse = await response.json();
+            return data.message || data.summary || 'Không có phản hồi từ server';
         }
 
-        const data: BotResponse = await response.json();
+        // Sử dụng OpenAI API cho các câu hỏi khác
+        try {
+            const completion = await openai.chat.completions.create({
+                messages: [
+                    { 
+                        role: "system", 
+                        content: "Bạn là một trợ lý AI thông minh và thân thiện. Hãy trả lời bằng Tiếng Việt một cách ngắn gọn, dễ hiểu." 
+                    },
+                    { 
+                        role: "user", 
+                        content: message 
+                    }
+                ],
+                model: "gpt-3.5-turbo",
+                temperature: 0.7,
+                max_tokens: 500,
+            });
 
-        // Check if we have a valid response
-        if (!data) {
-            throw new Error('Invalid response format from API');
+            return completion.choices[0]?.message?.content || 'Xin lỗi, tôi không thể xử lý yêu cầu này.';
+
+        } catch (error) {
+            console.error('OpenAI API error:', error);
+            throw new Error('Không thể kết nối với OpenAI API');
         }
-
-        // Return response data
-        if (data.error) {
-            throw new Error(data.error);
-        }
-
-        return data.message || data.summary || 'Không có phản hồi từ server';
 
     } catch (error) {
         console.error('Error in getBotResponse:', error);
