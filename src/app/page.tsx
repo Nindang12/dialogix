@@ -317,7 +317,7 @@ export default function Home() {
       <header className="fixed top-0 left-0 right-0 z-10 bg-white flex justify-between items-center p-4 border-b shadow-sm">
         <div className="flex items-center space-x-3">
           <img src="/assets/avtBotchat.png" alt="ChatGPT Icon" className="w-8 h-8" />
-          <span className="font-bold text-black text-lg">ChatGPT 4.0 mini</span>
+          <span className="font-bold text-black text-lg">Dialogix</span>
         </div>
         <div className="space-x-4">
           {isLoggedIn ? (
