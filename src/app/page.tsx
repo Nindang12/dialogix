@@ -16,6 +16,14 @@ interface ChatHistory {
   messages: Message[];
 }
 
+interface SummarizeSuggestion {
+  type: string;
+  text: string;
+}
+
+const TOKEN_VALIDATE_INTERVAL = 5 * 60 * 1000; // 5 phút
+let lastValidateTime = 0;
+
 export default function Home() {
   const [isChatting, setIsChatting] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -29,6 +37,7 @@ export default function Home() {
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [suggestions, setSuggestions] = useState<SummarizeSuggestion[]>([]);
 
   const handleSendMessage = async (message: string) => {
     if (!message || !message.trim()) {
@@ -79,21 +88,22 @@ export default function Home() {
 
   const checkLoginStatus = async () => {
     try {
-      console.log('Checking login status...');
-      
       const token = document.cookie
         .split('; ')
         .find(row => row.startsWith('token='))
         ?.split('=')[1];
         
-      console.log('Found token:', token ? 'yes' : 'no');
-      
       const userStr = localStorage.getItem('user');
-      console.log('Found user data:', userStr ? 'yes' : 'no');
 
       if (!token || !userStr) {
-        console.log('Missing token or user data');
         setIsLoggedIn(false);
+        return;
+      }
+
+      // Chỉ validate token nếu đã qua interval hoặc chưa validate lần nào
+      const now = Date.now();
+      if (now - lastValidateTime < TOKEN_VALIDATE_INTERVAL && lastValidateTime !== 0) {
+        setIsLoggedIn(true);
         return;
       }
 
@@ -104,36 +114,25 @@ export default function Home() {
         }
       });
 
-      const data = await response.json();
-      console.log('Token validation response:', data);
-
-      if (response.ok && data.valid) {
-        console.log('Token is valid - user is logged in');
+      if (response.ok) {
+        lastValidateTime = now;
         setIsLoggedIn(true);
         
-        // Load chat history
-        try {
-          const userData = JSON.parse(userStr);
-          const historyResponse = await fetch(`/api/chat-history?username=${userData.username}`);
-          const historyData = await historyResponse.json();
-          
-          console.log('Loaded chat history:', historyData);
-          
-          if (historyResponse.ok && Array.isArray(historyData)) {
-            setChatHistory(historyData);
-            // Nếu có chat history, load chat cuối cùng
-            if (historyData.length > 0) {
-              const lastChat = historyData[historyData.length - 1];
-              setCurrentChatId(lastChat.id);
-              setMessages(lastChat.messages);
-              setIsChatting(true);
+        // Load chat history chỉ khi cần thiết
+        if (chatHistory.length === 0) {
+          try {
+            const userData = JSON.parse(userStr);
+            const historyResponse = await fetch(`/api/chat-history?username=${userData.username}`);
+            const historyData = await historyResponse.json();
+            
+            if (historyResponse.ok && Array.isArray(historyData)) {
+              setChatHistory(historyData);
             }
+          } catch (error) {
+            console.error('Failed to load chat history:', error);
           }
-        } catch (error) {
-          console.error('Failed to load chat history:', error);
         }
       } else {
-        console.log('Token is invalid - logging out');
         handleLogout();
       }
 
@@ -312,13 +311,70 @@ export default function Home() {
     }
   };
 
+  const handleSummarizeText = (type: string) => {
+    let prompt = '';
+    let newSuggestions: SummarizeSuggestion[] = [];
+    
+    switch (type) {
+      case 'long':
+        newSuggestions = [
+          { type: 'long', text: 'Tóm tắt tác phẩm Chí Phèo của Nam Cao' },
+          { type: 'long', text: 'Tóm tắt truyện Số Đỏ của Vũ Trọng Phụng' },
+          { type: 'long', text: 'Tóm tắt Truyện Kiều của Nguyễn Du' }
+        ];
+        break;
+      case 'paragraph':
+        newSuggestions = [
+          { type: 'paragraph', text: 'Tóm tắt đoạn văn về biến đổi khí hậu' },
+          { type: 'paragraph', text: 'Tóm tắt đoạn văn về ô nhiễm môi trường' },
+          { type: 'paragraph', text: 'Tóm tắt đoạn văn về phát triển bền vững' }
+        ];
+        break;
+      case 'article':
+        newSuggestions = [
+          { type: 'article', text: 'Tóm tắt bài báo về trí tuệ nhân tạo' },
+          { type: 'article', text: 'Tóm tắt bài báo về công nghệ blockchain' },
+          { type: 'article', text: 'Tóm tắt bài báo về xu hướng công nghệ 2024' }
+        ];
+        break;
+      case 'document':
+        newSuggestions = [
+          { type: 'document', text: 'Tóm tắt tài liệu về lịch sử Việt Nam' },
+          { type: 'document', text: 'Tóm tắt tài liệu về kinh tế vĩ mô' },
+          { type: 'document', text: 'Tóm tắt tài liệu về marketing căn bản' }
+        ];
+        break;
+      case 'content':
+        newSuggestions = [
+          { type: 'content', text: 'Tóm tắt nội dung về cách viết CV xin việc' },
+          { type: 'content', text: 'Tóm tắt nội dung về kỹ năng thuyết trình' },
+          { type: 'content', text: 'Tóm tắt nội dung về phương pháp học tập hiệu quả' }
+        ];
+        break;
+    }
+    setInputValue(prompt);
+    setSuggestions(newSuggestions);
+    
+    // Focus vào input
+    const inputElement = document.querySelector('input[type="text"]') as HTMLInputElement;
+    if (inputElement) {
+      inputElement.focus();
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: SummarizeSuggestion) => {
+    const prompt = `${inputValue}${suggestion.text}`;
+    setInputValue(prompt);
+    setSuggestions([]); // Ẩn suggestions sau khi chọn
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-white text-black">
       <header className="fixed top-0 left-0 right-0 z-10 bg-white flex justify-between items-center p-4 border-b shadow-sm">
-        <div className="flex items-center space-x-3">
+        <Link href="/" className="flex items-center space-x-3">
           <img src="/assets/avtBotchat.png" alt="ChatGPT Icon" className="w-8 h-8" />
           <span className="font-bold text-black text-lg">Dialogix</span>
-        </div>
+        </Link>
         <div className="space-x-4">
           {isLoggedIn ? (
             <div className="flex items-center space-x-4">
@@ -443,36 +499,71 @@ export default function Home() {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && inputValue.trim()) {
                       handleSendMessage(inputValue);
+                      setSuggestions([]); // Ẩn suggestions khi gửi tin nhắn
                     }
                   }}
                 />
                 <button 
-                  onClick={() => handleSendMessage(inputValue)}
+                  onClick={() => {
+                    handleSendMessage(inputValue);
+                    setSuggestions([]); // Ẩn suggestions khi gửi tin nhắn
+                  }}
                   className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
                 >
                   <img width={25} src="/assets/up-arrow.svg" alt="up arrow" />
                 </button>
               </div>
+              
+              {/* Hiển thị suggestions */}
+              {suggestions.length > 0 && (
+                <div className="absolute w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                  {suggestions.map((suggestion, index) => (
+                    <div
+                      key={index}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+                    >
+                      {suggestion.text}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap justify-center space-x-2 mt-4">
-              <button className="flex items-center space-x-2 bg-white border border-gray-300 px-4 py-2 rounded-full shadow-sm mb-2">
+              <button 
+                onClick={() => handleSummarizeText('long')}
+                className="flex items-center space-x-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-4 py-2 rounded-full shadow-sm mb-2 transition-colors"
+              >
                 <img width={25} src="/assets/docfile.svg" alt="docfile" />
-                <span>Tóm tắt văn bản</span>
+                <span className="text-blue-700">Tóm tắt văn bản dài</span>
               </button>
-              <button className="flex items-center space-x-2 bg-white border border-gray-300 px-4 py-2 rounded-full shadow-sm mb-2">
-                <img width={25} src="/assets/codefile.svg" alt="code" />
-                <span>Mã</span>
+              <button 
+                onClick={() => handleSummarizeText('paragraph')}
+                className="flex items-center space-x-2 bg-green-50 hover:bg-green-100 border border-green-200 px-4 py-2 rounded-full shadow-sm mb-2 transition-colors"
+              >
+                <img width={25} src="/assets/docfile.svg" alt="docfile" />
+                <span className="text-green-700">Tóm tắt đoạn văn</span>
               </button>
-              <button className="flex items-center space-x-2 bg-white border border-gray-300 px-4 py-2 rounded-full shadow-sm mb-2">
-                <img width={25} src="/assets/lightfile.svg" alt="lightfile" />
-                <span>Lên ý tưởng</span>
+              <button 
+                onClick={() => handleSummarizeText('article')}
+                className="flex items-center space-x-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-4 py-2 rounded-full shadow-sm mb-2 transition-colors"
+              >
+                <img width={25} src="/assets/docfile.svg" alt="docfile" />
+                <span className="text-purple-700">Tóm tắt bài báo</span>
               </button>
-              <button className="flex items-center space-x-2 bg-white border border-gray-300 px-4 py-2 rounded-full shadow-sm mb-2">
-                <img width={25} src="/assets/magic.svg" alt="magic" />
-                <span>Làm tôi ngạc nhiên</span>
+              <button 
+                onClick={() => handleSummarizeText('document')}
+                className="flex items-center space-x-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 px-4 py-2 rounded-full shadow-sm mb-2 transition-colors"
+              >
+                <img width={25} src="/assets/docfile.svg" alt="docfile" />
+                <span className="text-orange-700">Tóm tắt tài liệu</span>
               </button>
-              <button className="flex items-center space-x-2 bg-white border border-gray-300 px-4 py-2 rounded-full shadow-sm mb-2">
-                <span>Thêm</span>
+              <button 
+                onClick={() => handleSummarizeText('content')}
+                className="flex items-center space-x-2 bg-pink-50 hover:bg-pink-100 border border-pink-200 px-4 py-2 rounded-full shadow-sm mb-2 transition-colors"
+              >
+                <img width={25} src="/assets/docfile.svg" alt="docfile" />
+                <span className="text-pink-700">Tóm tắt nội dung</span>
               </button>
             </div>
           </div>
